@@ -1,0 +1,24 @@
+{
+  "name": "node-steam-card-farm",
+  "version": "0.1.0",
+  "description": "Node script that farms cards for you, on multiple accounts!",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": {
+    "name": "Arkadiusz Sygulski",
+    "email": "arkadiusz@sygulski.pl",
+    "url": "https://www.sygulski.pl"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^0.19.0",
+    "fs": "0.0.2",
+    "steam-totp": "^1.1.0",
+    "steam-tradeoffer-manager": "^1.15.1",
+    "steam-user": "^3.1.0",
+    "steamcommunity": "^3.14.1593",
+    "winston": "^2.1.1"
+  }
+}

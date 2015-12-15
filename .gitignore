@@ -1,0 +1,5 @@
+.idea/
+node_modules/
+polldata/*.json
+config/settings.js
+*.log
