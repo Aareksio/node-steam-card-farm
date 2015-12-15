@@ -50,20 +50,20 @@ module.exports = {
 };
 ```
 
-`domain` - This string is used while requesting new trade API key
-`botAdmins` - An array with bot admins
-`logger` - logger level configuration ([Winston](https://github.com/winstonjs/winston#logging-levels))
+- `domain` - This string is used while requesting new trade API key
+- `botAdmins` - An array with bot admins
+- `logger` - logger level configuration ([Winston](https://github.com/winstonjs/winston#logging-levels))
     - `console` - console log level, you may like to use `verbose` to get more information there
     - `file` - file log level
-`bots` - An array with you bots details
-    `enabled` - Determines if bot is used or not
-    `trades` - Optional, default `false`, use to enable trade module. If enabled bot accepts all trades from admins
-    `idle` - Optional, default `true`, if set to false the bot will not idle any games, but still work as interface
-    `steamid` - The bot steamid
-    `username` - The bot username
-    `password` - The bot password
-    `shared_secret` - Used if 2FA is enabled on the account, ommit if your account doesn't use it. If not supplied you'll be prompt to enter 2FA every time you run the script.
-`stats` - If `true`, the bot will join [group chat](http://steamcommunity.com/groups/nscf) as a guest
+- `bots` - An array with you bots details
+    - `enabled` - Determines if bot is used or not
+    - `trades` - Optional, default `false`, use to enable trade module. If enabled bot accepts all trades from admins
+    - `idle` - Optional, default `true`, if set to false the bot will not idle any games, but still work as interface
+    - `steamid` - The bot steamid
+    - `username` - The bot username
+    - `password` - The bot password
+    - `shared_secret` - Used if 2FA is enabled on the account, ommit if your account doesn't use it. If not supplied you'll be prompt to enter 2FA every time you run the script.
+- `stats` - If `true`, the bot will join [group chat](http://steamcommunity.com/groups/nscf) as a guest
 
 ## Bot commands
 
@@ -71,16 +71,16 @@ There's a few commands you may use to menage your bots. Every bot acts as an int
 
 Available commands: !help, !info, !stats, !status, !botidle <appid>, !botstop, !botstart, !botrefresh, !farmidle <appid>, !farmrefresh
 
-`!help` - Displays available command
-`!info` - Displays script info
-`!stats` - Displays total amount of games left to idle by bot
-`!status` - The same as `!stats`, but displays only current bot data
-`!botidle <appid>` - Requests the bot to idle prompt game, there's no checking for cards left
-`!botstop` - Stops the bot from idling
-`!botstart` - Run the bot if stopped
-`!botrefresh` - Refresh badges list
-`!farmidle <appid>` - Orders all bots to idle prompt game, only bots which have cards left will respond
-`!farmrefresh` - Refresh badges list for all bots
+- `!help` - Displays available command
+- `!info` - Displays script info
+- `!stats` - Displays total amount of games left to idle by bot
+- `!status` - The same as `!stats`, but displays only current bot data
+- `!botidle <appid>` - Requests the bot to idle prompt game, there's no checking for cards left
+- `!botstop` - Stops the bot from idling
+- `!botstart` - Run the bot if stopped
+- `!botrefresh` - Refresh badges list
+- `!farmidle <appid>` - Orders all bots to idle prompt game, only bots which have cards left will respond
+- `!farmrefresh` - Refresh badges list for all bots
 
 ## Tested on
 
