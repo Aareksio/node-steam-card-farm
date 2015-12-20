@@ -42,7 +42,9 @@ settings.bots.forEach(function(bot) {
             password: bot.password,
             shared_secret: bot.shared_secret,
             idle: bot.idle || true,
-            bot: new SteamUser(),
+            bot: new SteamUser({
+                'promptSteamGuardCode': false
+            }),
             community: new SteamCommunity(),
             offers: (!bot.trades ? null : new TradeOfferManager({
                 steam: this.bot,
@@ -263,12 +265,15 @@ function loadBadges(botid, page, apps, callback) {
             name = name.text().replace(/\n/g, '').replace(/\r/g, '').replace(/\t/g, '').trim();
 
             var drops = row.find('.progress_info_bold').text().match(/(\d+) card drops remaining/);
-            if (!drops) { // Nothing to do here!
-                return;
+            if (!drops) {
+                drops = row.find('.progress_info_bold').text().match(/(\d+) card drop remaining/);
+                if (!drops) { // Nothing to do here!
+                    return;
+                }
             }
 
             drops = parseInt(drops[1], 10);
-            if (isNaN(drops) || drops < 1) { // Well done!
+            if (isNaN(drops) || drops == 0) { // Well done!
                 return;
             }
 
@@ -378,13 +383,11 @@ Object.keys(bots).forEach(function(botid) {
         /* Handle errors */
         bots[botid].bot.on('error', function(e) {
             /* [TODO: Handle errors like LogonSessionReplaced] */
-            switch(e) {
-                case SteamUser.Steam.EResult.InvalidPassword:
-                    logger.error('[' + bots[botid].name + '] Invalid password!');
-                    break;
-                default:
-                    logger.error(e);
-            }
+            logger.error('[' + bots[botid].name + '] ' + e);
+        });
+
+        bots[botid].bot.on('steamGuard', function(domain, callback, lastCodeWrong) {
+            logger.warn('[' + bots[botid].name + '] SteamGuard code required - use mobile auth!');
         });
 
         /* Get web session */
