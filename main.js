@@ -60,11 +60,10 @@ settings.bots.forEach(function(bot) {
 
 /* Bot functions */
 function botRedeemKey(botid, key, callback) {
-    /* [TODO: Update and use this if node-steam-user's poll request #36 accepted] */
     bots[botid].bot.redeemKey(key, function(result, details, apps) {
-        if(details === SteamUser.EPurchaseResult.OK) {
+        if (details === SteamUser.EPurchaseResult.OK) {
             updateGames(botid);
-            callback(null, botid,apps);
+            callback(null, botid, apps);
             return;
         }
 
@@ -73,7 +72,6 @@ function botRedeemKey(botid, key, callback) {
 }
 
 function farmRedeemKey(key, callback) {
-    /* [TODO: Update and use this if node-steam-user's poll request #36 accepted] */
     /* [TODO: Check if the bot already owns the game instead of blind testing] */
     var bot_ids = Object.keys(bots);
 
@@ -83,7 +81,7 @@ function farmRedeemKey(key, callback) {
                 case SteamUser.EPurchaseResult.InvalidKey:
                 case SteamUser.EPurchaseResult.DuplicatedKey:
                 case SteamUser.EPurchaseResult.RegionLockedKey:
-                    if(typeof callback === 'function') {
+                    if (typeof callback === 'function') {
                         callback(err);
                     }
                     break;
@@ -94,10 +92,12 @@ function farmRedeemKey(key, callback) {
                     if (bot_ids.length > 0) {
                         botRedeemKey(bot_ids[0], key, code_callback);
                     } else {
-                        if (err === SteamUser.EPurchaseResult.OnCooldown) {
-                            callback(null, 'Key activation on cooldown or/and already owned by all bots!');
-                        } else {
-                            callback(null, 'Already owned by all bots!');
+                        if (typeof callback === 'function') {
+                            if (err === SteamUser.EPurchaseResult.OnCooldown) {
+                                callback(null, 'Key activation on cooldown or/and already owned by all bots!');
+                            } else {
+                                callback(null, 'Already owned by all bots!');
+                            }
                         }
                     }
                     break;
@@ -106,6 +106,9 @@ function farmRedeemKey(key, callback) {
             logger.info('[' + bots[botid].name + '] Activated new key! New packets: ' + apps.map(function(index) {
                      return apps[index].game_extra_info;
                  }).join(', '));
+            if (typeof callback === 'function') {
+                callback(null, botid, apps);
+            }
         }
     };
 
@@ -114,7 +117,7 @@ function farmRedeemKey(key, callback) {
 
 function idleGame(botid, gameid) {
     /* Check if bot is ndisabled from idling */
-    if(bots[botid].idle) {
+    if (bots[botid].idle) {
         /* Check if gameid is number or not */
         if (!isNaN(parseInt(gameid))) {
             gameid = parseInt(gameid);
@@ -176,7 +179,7 @@ function processMessage(botid, senderid, message) {
                 case 'botrefresh':
                     bots[botid].bot.chatMessage(senderid, 'Refreshing the bot!');
                     updateGames(botid, function(err) {
-                        if(err) {
+                        if (err) {
                             bots[botid].bot.chatMessage(senderid, 'Error! ' + err);
                         } else {
                             bots[botid].bot.chatMessage(senderid, 'Done!');
@@ -188,10 +191,22 @@ function processMessage(botid, senderid, message) {
                     Object.keys(bots).forEach(function(id) {
                         if (bots.hasOwnProperty(id)) {
                             updateGames(id, function(err) {
-                                if(err) {
+                                if (err) {
                                     bots[id].bot.chatMessage(senderid, 'Error! ' + err);
                                 }
                             });
+                        }
+                    });
+                    break;
+                case 'reedeem':
+                    var code = message.split(' ')[1];
+                    botRedeemKey(botid, code, function(err, details, apps) {
+                        if (err) {
+                            bots[botid].bot.chatMessage(senderid, 'Couldn\'t activate the code, error: ' + details);
+                        } else {
+                            bots[botid].bot.chatMessage(senderid, 'Redeemed code! Apps: ' + apps.map(function(index) {
+                                    return apps[index].game_extra_info;
+                                }).join(', ') + '!');
                         }
                     });
                     break;
@@ -274,7 +289,7 @@ function loadBadges(botid, page, apps, callback) {
         });
 
         var pagelinks = $('.pageLinks').first();
-        if(pagelinks.html() == null) {
+        if (pagelinks.html() == null) {
             callback(apps);
             return;
         }
@@ -282,7 +297,7 @@ function loadBadges(botid, page, apps, callback) {
         pagelinks.find('.pagebtn').each(function() {
             var button = $(this);
             if (button.text() === '>') {
-                if(button.hasClass('disabled')) {
+                if (button.hasClass('disabled')) {
                     callback(apps);
                 } else {
                     loadBadges(botid, page + 1, apps, callback);
@@ -293,7 +308,7 @@ function loadBadges(botid, page, apps, callback) {
 }
 
 function updateGames(botid, callback) {
-    if(!bots[botid].community.steamID) {
+    if (!bots[botid].community.steamID) {
         if (typeof callback === 'function') {
             callback('Not logged in!');
         }
@@ -379,7 +394,7 @@ Object.keys(bots).forEach(function(botid) {
             bots[botid].community.setCookies(cookies);
 
             /* Do the same with trade module */
-            if(bots[botid].offers !== null) {
+            if (bots[botid].offers !== null) {
                 bots[botid].offers.setCookies(cookies, function (err){
                     if (!err) {
                         logger.verbose('[' + bots[botid].name + '] Trade offer cookies set. Got API Key: '+ bots[botid].offers.apiKey);

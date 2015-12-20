@@ -17,7 +17,7 @@
     "fs": "0.0.2",
     "steam-totp": "^1.1.0",
     "steam-tradeoffer-manager": "^1.15.1",
-    "steam-user": "^3.1.0",
+    "steam-user": "^3.2.0",
     "steamcommunity": "^3.14.1593",
     "winston": "^2.1.1"
   }

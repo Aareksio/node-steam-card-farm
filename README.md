@@ -57,7 +57,7 @@ module.exports = {
     - `file` - file log level
 - `bots` - An array with you bots details
     - `enabled` - Determines if bot is used or not
-    - `trades` - Optional, default `false`, use to enable trade module. If enabled bot accepts all trades from admins
+    - `trades` - Optional, default `false`, use to enable trade module. If enabled bot accepts all trades from admins (currently not working with Mobile Authenticator)
     - `idle` - Optional, default `true`, if set to false the bot will not idle any games, but still work as interface
     - `steamid` - The bot steamid
     - `username` - The bot username
@@ -75,6 +75,7 @@ Available commands: !help, !info, !stats, !status, !botidle <appid>, !botstop, !
 - `!info` - Displays script info
 - `!stats` - Displays total amount of games left to idle by bot
 - `!status` - The same as `!stats`, but displays only current bot data
+- `!redeem <code>` - Redeem the code on bot's account
 - `!botidle <appid>` - Requests the bot to idle prompt game, there's no checking for cards left
 - `!botstop` - Stops the bot from idling
 - `!botstart` - Run the bot if stopped
