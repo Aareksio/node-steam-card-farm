@@ -103,7 +103,7 @@ function farmRedeemKey(key, callback) {
                     break;
             }
         } else {
-            logger.info('[' + bots[botid].name + '] Activated new key! New packets: ' + apps.map(function(index) {
+            logger.info('[' + bots[botid].name + '] Activated new key! New packets: ' + Object.keys(apps).map(function(index) {
                      return apps[index].game_extra_info;
                  }).join(', '));
             if (typeof callback === 'function') {
@@ -198,13 +198,13 @@ function processMessage(botid, senderid, message) {
                         }
                     });
                     break;
-                case 'reedeem':
+                case 'redeem':
                     var code = message.split(' ')[1];
                     botRedeemKey(botid, code, function(err, details, apps) {
                         if (err) {
                             bots[botid].bot.chatMessage(senderid, 'Couldn\'t activate the code, error: ' + details);
                         } else {
-                            bots[botid].bot.chatMessage(senderid, 'Redeemed code! Apps: ' + apps.map(function(index) {
+                            bots[botid].bot.chatMessage(senderid, 'Redeemed code! Apps: ' + Object.keys(apps).map(function(index) {
                                     return apps[index].game_extra_info;
                                 }).join(', ') + '!');
                         }
