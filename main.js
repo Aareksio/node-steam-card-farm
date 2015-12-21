@@ -49,7 +49,7 @@ settings.bots.forEach(function(bot) {
             offers: (!bot.trades ? null : new TradeOfferManager({
                 steam: this.bot,
                 domain: settings.domain,
-                language: "en",
+                language: 'en',
                 pollInterval: 20000,
                 cancelTime: 450000
             })),
@@ -65,11 +65,10 @@ function botRedeemKey(botid, key, callback) {
     bots[botid].bot.redeemKey(key, function(result, details, apps) {
         if (details === SteamUser.EPurchaseResult.OK) {
             updateGames(botid);
-            callback(null, botid, apps);
-            return;
+            return callback(null, botid, apps);
         }
 
-        callback(details, botid);
+        return callback(details, botid);
     });
 }
 
@@ -84,7 +83,7 @@ function farmRedeemKey(key, callback) {
                 case SteamUser.EPurchaseResult.DuplicatedKey:
                 case SteamUser.EPurchaseResult.RegionLockedKey:
                     if (typeof callback === 'function') {
-                        callback(err);
+                        return callback(err);
                     }
                     break;
                 case SteamUser.EPurchaseResult.AlreadyOwned:
@@ -96,9 +95,9 @@ function farmRedeemKey(key, callback) {
                     } else {
                         if (typeof callback === 'function') {
                             if (err === SteamUser.EPurchaseResult.OnCooldown) {
-                                callback(null, 'Key activation on cooldown or/and already owned by all bots!');
+                                return callback(null, 'Key activation on cooldown or/and already owned by all bots!');
                             } else {
-                                callback(null, 'Already owned by all bots!');
+                                return callback(null, 'Already owned by all bots!');
                             }
                         }
                     }
@@ -109,7 +108,7 @@ function farmRedeemKey(key, callback) {
                      return apps[index];
                  }).join(', '));
             if (typeof callback === 'function') {
-                callback(null, botid, apps);
+                return callback(null, botid, apps);
             }
         }
     };
@@ -121,8 +120,8 @@ function idleGame(botid, gameid) {
     /* Check if bot is ndisabled from idling */
     if (bots[botid].idle) {
         /* Check if gameid is number or not */
-        if (!isNaN(parseInt(gameid))) {
-            gameid = parseInt(gameid);
+        if (!isNaN(parseInt(gameid, 10))) {
+            gameid = parseInt(gameid, 10);
         }
 
         bots[botid].bot.gamesPlayed(gameid);
@@ -150,7 +149,7 @@ function processMessage(botid, senderid, message) {
                     bots[botid].bot.chatMessage(senderid, 'Check details here: https://github.com/Aareksio/node-steam-card-farm');
                     break;
                 case 'info':
-                    bots[botid].bot.chatMessage(senderid, 'Steam Cards Farm v0.1.0 (2015-12-15)');
+                    bots[botid].bot.chatMessage(senderid, 'Steam Cards Farm v0.1.1 (2015-12-21)');
                     bots[botid].bot.chatMessage(senderid, 'Report bugs here: https://github.com/Aareksio/node-steam-card-farm/issues');
                     break;
                 case 'status':
@@ -216,6 +215,9 @@ function processMessage(botid, senderid, message) {
                 case 'ping':
                     bots[botid].bot.chatMessage(senderid, 'Pong!');
                     break;
+                case 'debug':
+                    bots[botid].bot.chatMessage(senderid, 'Debug: ' + bots[botid].idling);
+                    break;
                 default:
                     bots[botid].bot.chatMessage(senderid, 'Unknown command, try: !help');
             }
@@ -232,13 +234,14 @@ function loadBadges(botid, page, apps, callback) {
     /* Use steamcommunity module to access badges page */
     bots[botid].community.request('https://steamcommunity.com/my/badges/?p=' + page, function(err, response, body) {
         /* Check for invalid response */
-        if (err || response.statusCode != 200) {
-            logger.warn('Error updating badges page: ' + (err || "HTTP" + response.statusCode));
+        if (err || response.statusCode !== 200) {
+            logger.warn('Error updating badges page: ' + (err || 'HTTP' + response.statusCode));
             if (typeof callback === 'function') {
-                callback((err || "HTTP" + response.statusCode));
-                return;
+                return callback((err || 'HTTP' + response.statusCode));
             }
         }
+
+        logger.debug('[' + bots[botid].name + '] Checking badges page ' + page + '!');
 
         /* Do some parse magic */
         var $ = Cheerio.load(body);
@@ -264,16 +267,14 @@ function loadBadges(botid, page, apps, callback) {
             name.find('.badge_view_details').remove();
             name = name.text().replace(/\n/g, '').replace(/\r/g, '').replace(/\t/g, '').trim();
 
-            var drops = row.find('.progress_info_bold').text().match(/(\d+) card drops remaining/);
-            if (!drops) {
-                drops = row.find('.progress_info_bold').text().match(/(\d+) card drop remaining/);
-                if (!drops) { // Nothing to do here!
-                    return;
-                }
+            var drops = row.find('.progress_info_bold').text().match(/(\d+) card drops? remaining/);
+            if (!drops) { // Nothing to do here!
+                return;
             }
 
             drops = parseInt(drops[1], 10);
-            if (isNaN(drops) || drops == 0) { // Well done!
+            if (isNaN(drops) || drops === 0) { // Well done!
+                logger.debug(appid + ': Can\'t parse cards!');
                 return;
             }
 
@@ -295,18 +296,17 @@ function loadBadges(botid, page, apps, callback) {
         });
 
         var pagelinks = $('.pageLinks').first();
-        if (pagelinks.html() == null) {
-            callback(apps);
-            return;
+        if (pagelinks.html() === null) {
+            return callback(apps);
         }
 
         pagelinks.find('.pagebtn').each(function() {
             var button = $(this);
             if (button.text() === '>') {
                 if (button.hasClass('disabled')) {
-                    callback(apps);
+                    return callback(apps);
                 } else {
-                    loadBadges(botid, page + 1, apps, callback);
+                    return loadBadges(botid, page + 1, apps, callback);
                 }
             }
         });
@@ -316,9 +316,8 @@ function loadBadges(botid, page, apps, callback) {
 function updateGames(botid, callback) {
     if (!bots[botid].community.steamID) {
         if (typeof callback === 'function') {
-            callback('Not logged in!');
+            return callback('Not logged in!');
         }
-        return;
     }
 
     var apps = {};
@@ -329,11 +328,15 @@ function updateGames(botid, callback) {
 
         /* Check if there's any game to idle */
         if (Object.keys(apps).length > 0) {
+            console.log(apps);
             /* Check if the bot is not idling the game already */
             if (!bots[botid].idling || !apps.hasOwnProperty(bots[botid].idling)) {
                 /* Get first element on the list and idle the game */
                 /* [TODO: Add different sort algorithms] */
+                logger.debug('[' + bots[botid].name + '] Game changed!');
                 idleGame(botid, Object.keys(apps)[0]);
+            } else {
+                logger.debug('[' + bots[botid].name + '] Game not changed!');
             }
         } else {
             /* Stop idling if no cards left */
@@ -344,7 +347,7 @@ function updateGames(botid, callback) {
         }
 
         if (typeof callback === 'function') {
-            callback(null);
+            return callback(null);
         }
     });
 }
@@ -373,6 +376,7 @@ Object.keys(bots).forEach(function(botid) {
         bots[botid].bot.on('loggedOn', function(details) {
             logger.info('[' + bots[botid].name + '] Logged into Steam!');
             bots[botid].bot.setPersona(SteamUser.Steam.EPersonaState.Online);
+            bots[botid].idling = null;
         });
 
         bots[botid].bot.on('disconnected', function(details) {
@@ -382,7 +386,7 @@ Object.keys(bots).forEach(function(botid) {
 
         /* Handle errors */
         bots[botid].bot.on('error', function(e) {
-            /* [TODO: Handle errors like LogonSessionReplaced] */
+            /* [TODO: Handle errors] */
             logger.error('[' + bots[botid].name + '] ' + e);
         });
 
@@ -445,9 +449,9 @@ Object.keys(bots).forEach(function(botid) {
 
             /* Process trade offers sent by bot admin */
             bots[botid].offers.on('newOffer', function (offer) {
-                logger.info('[' + bots[botid].name + '] New offer #' + offer.id + ' from ' + offer.partner.getSteam3RenderedID());
+                logger.info('[' + bots[botid].name + '] New offer #' + offer.id + ' from ' + offer.partner.getSteamID64());
                 if (settings.botAdmins.indexOf(offer.partner.getSteamID64()) !== -1) {
-                    logger.info('[' + bots[botid].name + '] Admin ('+ offer.partner.getSteam3RenderedID() +') offered a trade. Attempting to accept.');
+                    logger.info('[' + bots[botid].name + '] Admin ('+ offer.partner.getSteamID64() +') offered a trade. Attempting to accept.');
                     offer.accept(function (err) {
                         if (err) {
                             logger.warn('[' + bots[botid].name + '] Unable to accept offer #'+ offer.id +': ' + err.message);
@@ -456,7 +460,7 @@ Object.keys(bots).forEach(function(botid) {
                         }
                     });
                 } else {
-                    logger.verbose('[' + bots[botid].name + '] User ' + offer.partner.getSteam3RenderedID() + ' offered an invalid trade. Declining.');
+                    logger.verbose('[' + bots[botid].name + '] User ' + offer.partner.getSteamID64() + ' offered an invalid trade. Declining.');
                     offer.decline(function (err) {
                         if (err) {
                             logger.warn('[' + bots[botid].name + '] Unable to decline offer #' + offer.id + ': ' + err.message);
