@@ -57,7 +57,7 @@ module.exports = {
     - `file` - file log level
 - `bots` - An array with you bots details
     - `enabled` - Determines if bot is used or not
-    - `trades` - Optional, default `false`, use to enable trade module. If enabled bot accepts all trades from admins (currently not working with Mobile Authenticator)
+    - `trades` - Optional, default `false`, use to enable trade module. If enabled bot accepts all trades from admins (if you use Mobile Authenticator you'll have to accept the trade manually)
     - `idle` - Optional, default `true`, if set to false the bot will not idle any games, but still work as interface
     - `steamid` - The bot steamid
     - `username` - The bot username
@@ -71,32 +71,30 @@ There's a few commands you may use to menage your bots. Every bot acts as an int
 
 Available commands: !help, !info, !stats, !status, !botidle <appid>, !botstop, !botstart, !botrefresh, !farmidle <appid>, !farmrefresh
 
-- `!help` - Displays available command
+- `!help` - Displays available commands
 - `!info` - Displays script info
-- `!stats` - Displays total amount of games left to idle by bot
-- `!status` - The same as `!stats`, but displays only current bot data
-- `!redeem <code>` - Redeem the code on bot's account
-- `!botidle <appid>` - Requests the bot to idle prompt game, there's no checking for cards left
-- `!botstop` - Stops the bot from idling
-- `!botstart` - Run the bot if stopped
-- `!botrefresh` - Refresh badges list
+- `!status` - Displays total amount of cards left to idle by bot (alias: !cards)
+- `!redeem <code>` - Redeem the code on bot's account (alias: !feed <code>)
+- `!botidle <appid>` - Requests the bot to idle prompt game, there's no checking for cards left (alias: !idle <appid>)
 - `!farmidle <appid>` - Orders all bots to idle prompt game, only bots which have cards left will respond
+- `!botstop` - Stops the bot from idling
+- `!botstart` - Run the bot if stopped (alias: !botrefresh, !refresh)
 - `!farmrefresh` - Refresh badges list for all bots
+- `!ping` - Responds with 'Pong!'
 
 ## Tested on
 
-- Windows 8.1 Proffesional with Node.js 4.2.0
+- Windows 8.1 Pro N with Node.js 4.2.0
 - Debian 8.1 Jessie with Node.js 4.2.1
 
 ## Work in progress
 
 There's a couple of TODOs in the code, you may check them for details.
 
-- Implement game code redeem function - waiting for DoctorMcKay/node-steam-user#36
 - Disable bot if it's trade blocked - there's no point in farmin cards then
 - Check for game purchase data to prevent from disabling refund option
 - Check if the bot already owns the game, instead of testing the key on all of them
-- Support for Steam Mobile Authenticator to omit trade escrow
+- Support for Steam Mobile Authenticator to accept trades automatically
 
 ## Support
 

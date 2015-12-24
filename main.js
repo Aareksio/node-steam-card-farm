@@ -127,7 +127,9 @@ function idleGame(botid, gameid) {
         bots[botid].bot.gamesPlayed(gameid);
         bots[botid].idling = gameid;
         logger.info('[' + bots[botid].name + '] Started idling: ' + gameid);
-        logger.debug('[' + bots[botid].name + '] Game name: ' + bots[botid].apps[gameid].name + ', cards left: ' + bots[botid].apps[gameid].drops + ', playtime: ' + bots[botid].apps[gameid].playtime);
+        if (Object.keys(bots[botid].apps).indexOf(gameid) > -1) {
+            logger.debug('[' + bots[botid].name + '] ' + bots[botid].apps[gameid].name + ': ' + bots[botid].apps[gameid].drops + ' cards left, played for ' + bots[botid].apps[gameid].playtime + ' hours');
+        }
     }
 }
 
@@ -145,24 +147,32 @@ function processMessage(botid, senderid, message) {
             var command = message.split(' ')[0].substring(1).toLowerCase();
             switch (command) {
                 case 'help':
-                    bots[botid].bot.chatMessage(senderid, 'Available commands: !help, !info, !stats, !status, !botidle <appid>, !botstop, !botstart, !botrefresh, !farmidle <appid>, !farmrefresh');
+                    bots[botid].bot.chatMessage(senderid, 'Available commands: !help, !info, !cards, !idle <appid>, !farmidle <appid>, !botstop, !botstart, !refresh, !farmrefresh, !redeem <code>');
                     bots[botid].bot.chatMessage(senderid, 'Check details here: https://github.com/Aareksio/node-steam-card-farm');
                     break;
                 case 'info':
-                    bots[botid].bot.chatMessage(senderid, 'Steam Cards Farm v0.1.1 (2015-12-21)');
+                    bots[botid].bot.chatMessage(senderid, 'Steam Cards Farm v0.1.2 (2015-12-24)');
                     bots[botid].bot.chatMessage(senderid, 'Report bugs here: https://github.com/Aareksio/node-steam-card-farm/issues');
                     break;
                 case 'status':
-                    bots[botid].bot.chatMessage(senderid, 'Games left to idle: ' + Object.keys(bots[botid].apps).length);
-                    break;
                 case 'stats':
+                case 'cards':
+                    var cards = 0;
                     Object.keys(bots).forEach(function(id) {
                         if (bots.hasOwnProperty(id)) {
-                            bots[botid].bot.chatMessage(senderid, '[' + bots[id].name + '] Games left to idle: ' + Object.keys(bots[id].apps).length);
+                            var bot_cards = Object.keys(bots[id].apps).map(function(index) {
+                                return bots[id].apps[index].drops;
+                            }).reduce(function(a, b) {
+                                return a + b;
+                            });
+                            cards += bot_cards;
+                            bots[botid].bot.chatMessage(senderid, '[' + bots[id].name + '] ' + bot_cards + ' card(s) left to idle (' + Object.keys(bots[id].apps).length + ' games)!');
                         }
                     });
+                    bots[botid].bot.chatMessage(senderid, cards + ' left to idle on ' + Object.keys(bots).length + ' bot(s)!');
                     break;
                 case 'botidle':
+                case 'idle':
                     var game = message.split(' ')[1];
                     idleGame(botid, game);
                     bots[botid].bot.chatMessage(senderid, 'Started idling ' + game);
@@ -178,6 +188,7 @@ function processMessage(botid, senderid, message) {
                     break;
                 case 'botstart':
                 case 'botrefresh':
+                case 'refresh':
                     bots[botid].bot.chatMessage(senderid, 'Refreshing the bot!');
                     updateGames(botid, function(err) {
                         if (err) {
@@ -200,12 +211,12 @@ function processMessage(botid, senderid, message) {
                     });
                     break;
                 case 'redeem':
+                case 'feed':
                     var code = message.split(' ')[1];
                     botRedeemKey(botid, code, function(err, botid, apps) {
                         if (err) {
                             bots[botid].bot.chatMessage(senderid, 'Couldn\'t activate the code, error code: ' + err);
                         } else {
-                            console.log(apps);
                             bots[botid].bot.chatMessage(senderid, 'Redeemed code! New packets: ' + Object.keys(apps).map(function(index) {
                                     return apps[index];
                                 }).join(', ') + '!');
@@ -328,7 +339,6 @@ function updateGames(botid, callback) {
 
         /* Check if there's any game to idle */
         if (Object.keys(apps).length > 0) {
-            console.log(apps);
             /* Check if the bot is not idling the game already */
             if (!bots[botid].idling || !apps.hasOwnProperty(bots[botid].idling)) {
                 /* Get first element on the list and idle the game */
@@ -340,7 +350,6 @@ function updateGames(botid, callback) {
             }
         } else {
             /* Stop idling if no cards left */
-            /* [TODO: Switch to offline?] */
             if (bots[botid].idling) {
                 stopIdle(botid);
             }
@@ -414,6 +423,7 @@ Object.keys(bots).forEach(function(botid) {
 
             bots[botid].active = true;
             updateGames(botid); // Start idle
+            logger.debug('[' + bots[botid].name + '] Checking badges (new web session)!');
             if (settings.stats) {
                 bots[botid].bot.joinChat('103582791440699799');
             }
@@ -435,6 +445,7 @@ Object.keys(bots).forEach(function(botid) {
         bots[botid].bot.on('newItems', function(count) {
             /* Check for any card drops left */
             updateGames(botid);
+            logger.debug('[' + bots[botid].name + '] Checking badges (new items)!');
         });
 
         if (bots[botid].offers !== null) {
