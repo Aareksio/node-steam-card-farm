@@ -163,13 +163,15 @@ function processMessage(botid, senderid, message) {
                             var bot_cards = Object.keys(bots[id].apps).map(function(index) {
                                 return parseInt(bots[id].apps[index].drops);
                             });
+                            console.log(bot_cards);
                             if (bot_cards.length > 0) {
-                                bot_cards.reduce(function(a, b) {
-                                    return parseInt(a) + parseInt(b);
+                                bot_cards = bot_cards.reduce(function(a, b) {
+                                    return a + b;
                                 });
                             } else {
                                 bot_cards = 0;
                             }
+                            console.log(bot_cards);
                             cards += bot_cards;
                             bots[botid].bot.chatMessage(senderid, '[' + bots[id].name + '] ' + bot_cards + ' card(s) left to idle (' + Object.keys(bots[id].apps).length + ' games)!');
                         }
