@@ -165,7 +165,7 @@ function processMessage(botid, senderid, message) {
                             });
                             if (bot_cards.length > 0) {
                                 bot_cards.reduce(function(a, b) {
-                                    return a + b;
+                                    return parseInt(a) + parseInt(b);
                                 });
                             } else {
                                 bot_cards = 0;
