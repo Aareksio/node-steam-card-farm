@@ -162,9 +162,14 @@ function processMessage(botid, senderid, message) {
                         if (bots.hasOwnProperty(id)) {
                             var bot_cards = Object.keys(bots[id].apps).map(function(index) {
                                 return bots[id].apps[index].drops;
-                            }).reduce(function(a, b) {
-                                return a + b;
                             });
+                            if (bot_cards.length > 0) {
+                                bot_cards.reduce(function(a, b) {
+                                    return a + b;
+                                });
+                            } else {
+                                bot_cards = 0;
+                            }
                             cards += bot_cards;
                             bots[botid].bot.chatMessage(senderid, '[' + bots[id].name + '] ' + bot_cards + ' card(s) left to idle (' + Object.keys(bots[id].apps).length + ' games)!');
                         }
