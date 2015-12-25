@@ -2,6 +2,7 @@
 ### Node script that farms cards for you, on multiple accounts!
 
 Steam Card Farm is Node.js script to farms Steam cards for you using multiple accounts at once, it's idea is based on [ArchiSteamFarm](https://github.com/JustArchi/ArchiSteamFarm). The script simulates Steam client, works in the background and is self-sufficient. It's designed to work on every device that is able to run Node.js.
+
 Everything works well thanks to [SteamKit2](https://github.com/SteamRE/SteamKit) node.js port, [node-steam](https://github.com/seishun/node-steam) and awesome modules made by [DoctorMcKay](https://github.com/DoctorMcKay).
 
 ## Requirements
@@ -17,7 +18,9 @@ Requires Node.js version 4.11 or greater.
 ## Running
 
 Before running the script create configuration file `config/settings.js`, you should use `config/example.js` as reference (read [configuration](#configuration) for details).
+
 Running it is as simple as executing `node main.js`. On unix systems you may use your favourite software to keep it running in background (check [pm2](https://github.com/Unitech/pm2), [nodemon](https://github.com/remy/nodemon), [forever](https://github.com/foreverjs/forever), [screen](http://linux.die.net/man/1/screen) or [nohup](http://linux.die.net/man/1/nohup)).
+
 You should see some information on console screen (depending on log level you chose), all control is done via bot interface (steam message - read [bot commands](#bot-commands)).
 
 ## Configuration

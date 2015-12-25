@@ -126,12 +126,14 @@ function idleGame(botid, gameid) {
             gameid = parseInt(gameid, 10);
         }
 
+        if(gameid === 0) { // Something went wrong...
+            logger.debug('[' + bots[botid].name + '] Requested to idle game id 0, trashing!');
+            return;
+        }
+
         bots[botid].bot.gamesPlayed(gameid);
         bots[botid].idling = gameid;
         logger.info('[' + bots[botid].name + '] Started idling: ' + gameid);
-        if (Object.keys(bots[botid].apps).indexOf(gameid) > -1) {
-            logger.debug('[' + bots[botid].name + '] ' + bots[botid].apps[gameid].name + ': ' + bots[botid].apps[gameid].drops + ' cards left, played for ' + bots[botid].apps[gameid].playtime + ' hours');
-        }
     }
 }
 
@@ -175,10 +177,10 @@ function processMessage(botid, senderid, message) {
                                 bot_cards = 0;
                             }
                             cards += bot_cards;
-                            bots[botid].bot.chatMessage(senderid, '[' + bots[id].name + '] ' + bot_cards + ' card(s) left to idle (' + Object.keys(bots[id].apps).length + ' games)!');
+                            bots[botid].bot.chatMessage(senderid, '[' + bots[id].name + '] ' + bot_cards + ' card(s) left (' + Object.keys(bots[id].apps).length + ' games)' + (bots[botid].idling ? ', currently idling: ' + bots[botid].idle : '') + '!');
                         }
                     });
-                    bots[botid].bot.chatMessage(senderid, cards + ' left to idle on ' + Object.keys(bots).length + ' bot(s)!');
+                    bots[botid].bot.chatMessage(senderid, cards + ' left to idle on ' + Object.keys(bots).length + ' client(s)!');
                     break;
                 case 'botidle':
                 case 'idle':
@@ -267,23 +269,26 @@ function loadBadges(botid, page, apps, callback, retry) {
     bots[botid].community.request('https://steamcommunity.com/my/badges/?p=' + page, function(err, response, body) {
         /* Check for invalid response */
         if (err || response.statusCode !== 200) {
-            logger.warn('Error updating badges page: ' + (err || 'HTTP' + response.statusCode));
-            if (typeof callback === 'function') {
-                return callback((err || 'HTTP' + response.statusCode));
-            }
+            logger.warn('[' + bots[botid].name + '] Error updating badges page: ' + (err || 'HTTP' + response.statusCode) + ', retrying...');
             if (retry < 5) {
                 loadBadges(botid, page, apps, callback, retry + 1);
             }
+            if (typeof callback === 'function') {
+                return callback((err || 'HTTP' + response.statusCode));
+            } else {
+                return;
+            }
         }
-
-        logger.debug('[' + bots[botid].name + '] Badges page ' + page + ' loaded...');
 
         /* Do some parse magic */
         var $ = Cheerio.load(body);
 
         if ($('#loginForm').length) {
-            logger.debug('[' + bots[botid].name + '] Cannot load badges page - not logged in!');
+            logger.warn('[' + bots[botid].name + '] Cannot load badges page - not logged in! Requesting new session...');
+            return bots[botid].bot.webLogOn();
         }
+
+        logger.debug('[' + bots[botid].name + '] Badges page ' + page + ' loaded...');
 
         $('.badge_row').each(function () { // For each badge...
             var row = $(this);
@@ -371,10 +376,10 @@ function updateGames(botid, callback) {
             if (!bots[botid].idling || !apps.hasOwnProperty(bots[botid].idling)) {
                 /* Get first element on the list and idle the game */
                 /* [TODO: Add different sort algorithms] */
-                logger.debug('[' + bots[botid].name + '] Game changed!');
+                logger.verbose('[' + bots[botid].name + '] Game changed!');
                 idleGame(botid, Object.keys(apps)[0]);
             } else {
-                logger.debug('[' + bots[botid].name + '] Game not changed!');
+                logger.verbose('[' + bots[botid].name + '] Game not changed!');
             }
         } else {
             /* Stop idling if no cards left */
@@ -439,7 +444,7 @@ Object.keys(bots).forEach(function(botid) {
 
         /* Get web session */
         bots[botid].bot.on('webSession', function (sessionID, cookies) {
-            logger.verbose('[' + bots[botid].name + '] Got web session');
+            logger.verbose('[' + bots[botid].name + '] Got new web session');
 
             /* Initialize steamcommunity module by setting cookies */
             bots[botid].community.setCookies(cookies);
@@ -456,8 +461,10 @@ Object.keys(bots).forEach(function(botid) {
             }
 
             bots[botid].active = true;
-            updateGames(botid); // Start idle
-            logger.debug('[' + bots[botid].name + '] Checking badges (new web session)!');
+            setTimeout(function() {
+                logger.debug('[' + bots[botid].name + '] Checking badges (new web session)!');
+                updateGames(botid); // Start idle
+            }, 2500); // 'Still cooking', give it time...
             if (settings.stats) {
                 bots[botid].bot.joinChat('103582791440699799');
             }
@@ -478,8 +485,10 @@ Object.keys(bots).forEach(function(botid) {
 
         bots[botid].bot.on('newItems', function(count) {
             /* Check for any card drops left */
-            updateGames(botid);
-            logger.debug('[' + bots[botid].name + '] Checking badges (new items)!');
+            setTimeout(function() {
+                logger.debug('[' + bots[botid].name + '] Checking badges (new items)!');
+                updateGames(botid); // Start idle
+            }, 2500); // Give it time, this event is emitted right after logging in - may take time for steam to load web session...
         });
 
         if (bots[botid].offers !== null) {
