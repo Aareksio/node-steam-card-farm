@@ -1,5 +1,11 @@
 /* Get settings from the file */
-var settings = require('./config/settings.js');
+try {
+    var settings = require('./config/settings.js');
+} catch (err) {
+    console.error('No settings file! (./config/settings.js)');
+    console.error('Read more: https://github.com/Aareksio/node-steam-card-farm#configuration');
+    process.exit(1);
+}
 
 /* Set up logging */
 var Winston = require('winston');
