@@ -55,7 +55,9 @@ settings.bots.forEach(function(bot) {
             })),
             active: false,
             idling: null,
-            apps: {}
+            apps: {},
+            offline: bot.offline || false,
+            debug: bot.debug || false
         };
     }
 });
@@ -147,15 +149,17 @@ function processMessage(botid, senderid, message) {
             var command = message.split(' ')[0].substring(1).toLowerCase();
             switch (command) {
                 case 'help':
-                    bots[botid].bot.chatMessage(senderid, 'Available commands: !help, !info, !cards, !idle <appid>, !farmidle <appid>, !botstop, !botstart, !refresh, !farmrefresh, !redeem <code>');
+                    bots[botid].bot.chatMessage(senderid, 'Available commands: !help, !info, !cards, !idle <appid>, !farmidle <appid>, !botstop, !refresh, !farmrefresh, !redeem <code>');
                     bots[botid].bot.chatMessage(senderid, 'Check details here: https://github.com/Aareksio/node-steam-card-farm');
                     break;
                 case 'info':
-                    bots[botid].bot.chatMessage(senderid, 'Steam Cards Farm v0.1.2 (2015-12-24)');
+                    bots[botid].bot.chatMessage(senderid, 'Steam Cards Farm v0.1.3 (2015-12-25)');
                     bots[botid].bot.chatMessage(senderid, 'Report bugs here: https://github.com/Aareksio/node-steam-card-farm/issues');
                     break;
                 case 'status':
                 case 'stats':
+                case 'drops':
+                case 'drop':
                 case 'cards':
                     var cards = 0;
                     Object.keys(bots).forEach(function(id) {
@@ -232,7 +236,16 @@ function processMessage(botid, senderid, message) {
                     bots[botid].bot.chatMessage(senderid, 'Pong!');
                     break;
                 case 'debug':
-                    bots[botid].bot.chatMessage(senderid, 'Debug: ' + bots[botid].idling);
+                    var subcommand = message.split(' ')[1];
+                    if (subcommand === 'on') {
+                        bots[botid].debug = true;
+                        bots[botid].bot.chatMessage(senderid, 'Switching on the debug!');
+                    } else if (subcommand === 'off') {
+                        bots[botid].debug = false;
+                        bots[botid].bot.chatMessage(senderid, 'Switching off the debug!');
+                    } else {
+                        bots[botid].bot.chatMessage(senderid, 'Debug is ' + (bots[botid].debug ? 'on' : 'off') + ', current game: ' + bots[botid].idling);
+                    }
                     break;
                 default:
                     bots[botid].bot.chatMessage(senderid, 'Unknown command, try: !help');
@@ -243,9 +256,12 @@ function processMessage(botid, senderid, message) {
     }
 }
 
-function loadBadges(botid, page, apps, callback) {
+function loadBadges(botid, page, apps, callback, retry) {
     apps = apps || {};
     page = page || 1;
+    retry = retry || 0;
+
+    logger.debug('[' + bots[botid].name + '] Checking badges page ' + page + '...');
 
     /* Use steamcommunity module to access badges page */
     bots[botid].community.request('https://steamcommunity.com/my/badges/?p=' + page, function(err, response, body) {
@@ -255,12 +271,19 @@ function loadBadges(botid, page, apps, callback) {
             if (typeof callback === 'function') {
                 return callback((err || 'HTTP' + response.statusCode));
             }
+            if (retry < 5) {
+                loadBadges(botid, page, apps, callback, retry + 1);
+            }
         }
 
-        logger.debug('[' + bots[botid].name + '] Checking badges page ' + page + '!');
+        logger.debug('[' + bots[botid].name + '] Badges page ' + page + ' loaded...');
 
         /* Do some parse magic */
         var $ = Cheerio.load(body);
+
+        if ($('#loginForm').length) {
+            logger.debug('[' + bots[botid].name + '] Cannot load badges page - not logged in!');
+        }
 
         $('.badge_row').each(function () { // For each badge...
             var row = $(this);
@@ -355,7 +378,9 @@ function updateGames(botid, callback) {
             }
         } else {
             /* Stop idling if no cards left */
+            logger.info('[' + bots[botid].name + '] No games to idle!');
             if (bots[botid].idling) {
+                logger.debug('[' + bots[botid].name + '] Stopping idle, no games left.');
                 stopIdle(botid);
             }
         }
@@ -381,6 +406,8 @@ function farmIdle(gameid) {
 Object.keys(bots).forEach(function(botid) {
     if (bots.hasOwnProperty(botid)) {
         /* Login to steam */
+        logger.info('[' + bots[botid].name + '] Logging in...');
+
         bots[botid].bot.logOn({
             accountName: bots[botid].username,
             password: bots[botid].password,
@@ -389,7 +416,9 @@ Object.keys(bots).forEach(function(botid) {
 
         bots[botid].bot.on('loggedOn', function(details) {
             logger.info('[' + bots[botid].name + '] Logged into Steam!');
-            bots[botid].bot.setPersona(SteamUser.Steam.EPersonaState.Online);
+            if (!bots[botid].offline) {
+                bots[botid].bot.setPersona(SteamUser.Steam.EPersonaState.Online);
+            }
             bots[botid].idling = null;
         });
 

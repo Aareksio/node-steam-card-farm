@@ -1,7 +1,8 @@
 # Steam Card Farm
 ### Node script that farms cards for you, on multiple accounts!
 
-Steam Card Farm is Node.js script that farms cards for you using multiple accounts at once based on [ArchiSteamFarm](https://github.com/JustArchi/ArchiSteamFarm) by @JustArchi. The script simulates Steam client, works in the background and is self-sufficient. It's designed to work on every device that is able to run Node.js. Everything works thanks to [SteamKit2](https://github.com/SteamRE/SteamKit) node.js port, [node-steam](https://github.com/seishun/node-steam) by @seishun, awesome modules by @DoctorMcKay.
+Steam Card Farm is Node.js script to farms Steam cards for you using multiple accounts at once, it's idea is based on [ArchiSteamFarm](https://github.com/JustArchi/ArchiSteamFarm). The script simulates Steam client, works in the background and is self-sufficient. It's designed to work on every device that is able to run Node.js.
+Everything works well thanks to [SteamKit2](https://github.com/SteamRE/SteamKit) node.js port, [node-steam](https://github.com/seishun/node-steam) and awesome modules made by [DoctorMcKay](https://github.com/DoctorMcKay).
 
 ## Requirements
 
@@ -13,57 +14,69 @@ Requires Node.js version 4.11 or greater.
 - Clone the repository
 - Run `npm install` inside script directory
 
+## Running
+
+Before running the script create configuration file `config/settings.js`, you should use `config/example.js` as reference (read [configuration](#configuration) for details).
+Running it is as simple as executing `node main.js`. On unix systems you may use your favourite software to keep it running in background (check [pm2](https://github.com/Unitech/pm2), [nodemon](https://github.com/remy/nodemon), [forever](https://github.com/foreverjs/forever), [screen](http://linux.die.net/man/1/screen) or [nohup](http://linux.die.net/man/1/nohup)).
+You should see some information on console screen (depending on log level you chose), all control is done via bot interface (steam message - read [bot commands](#bot-commands)).
+
 ## Configuration
 
-Before running the script create configuration file `config/settings.js`, you should use `config/example.js` as reference.
+### Example configuration with explanation
 
 ```js
 module.exports = {
-    domain: 'my-domain.me',
+    /* Domain, used for generating trade keys if needed */
+    domain: 'my.domain',
+
+    /* Bot admin(s) */
     botAdmins: [
         '76561198042302314'
     ],
+
+    /* Log levels */
     logger: {
-        console: 'info',
+        console: 'debug',
         file: 'error'
     },
+
+    /* Bots */
     bots: [
         {
-            enabled: true,
-            trades: true,
-            idle: false,
-            name: 'Main',
-            steamid: '76561198042302314',
-            username: 'mainUsername',
-            password: 'mainPassword',
-            shared_secret: 'sharedSecret'
-        },
-        {
             enabled: false,
-            name: 'Bot #1',
-            steamid: '76561198042XXXXXX',
-            username: 'bot#1Username',
-            password: 'bot#2Password'
+            trades: true,
+            idle: true,
+            offline: true,
+            name: 'Bot',
+            steamid: '76561198xxxxxxxxx',
+            username: 'xxxxxxxx',
+            password: 'xxxxxxxx',
+            shared_secret: 'xxxxxxxxxxxxxxxxxxxxxxxxxxx=',
+            identity_secret:'xxxxxxxxxxxxxxxxxxxxxxxxxxx='
         }
     ],
+
+    /* Statistics */
     stats: true
 };
 ```
 
-- `domain` - This string is used while requesting new trade API key
-- `botAdmins` - An array with bot admins
-- `logger` - logger level configuration ([Winston](https://github.com/winstonjs/winston#logging-levels))
-    - `console` - console log level, you may like to use `verbose` to get more information there
+- `domain` - String used while requesting new trade API key
+- `botAdmins` - An array that contains bot admins' SteamIDs
+- `logger` - logger level configuration (check [Winston](https://github.com/winstonjs/winston#logging-levels))
+    - `console` - console log level (you may want to use `verbose` or `debug` for more detailed log)
     - `file` - file log level
-- `bots` - An array with you bots details
-    - `enabled` - Determines if bot is used or not
-    - `trades` - Optional, default `false`, use to enable trade module. If enabled bot accepts all trades from admins (if you use Mobile Authenticator you'll have to accept the trade manually)
-    - `idle` - Optional, default `true`, if set to false the bot will not idle any games, but still work as interface
-    - `steamid` - The bot steamid
-    - `username` - The bot username
-    - `password` - The bot password
-    - `shared_secret` - Used if 2FA is enabled on the account, ommit if your account doesn't use it. If not supplied you'll be prompt to enter 2FA every time you run the script.
-- `stats` - If `true`, the bot will join [group chat](http://steamcommunity.com/groups/nscf) as a guest
+- `bots` - An array with clients details
+    - `enabled` - Determines if the client is used or not
+    - `trades` - Optional, default `false`, enables trade module. Trade module makes the client to accept all trades from admins (if you use Mobile Authenticator you'll have to accept the trade manually though)
+    - `idle` - Optional, default `true`, if disabled the client will not idle any games, but still work as an interface
+    - `offline` - Optional, default `false`, if set to `true` the client will not shown as online - great for idling main account
+    - `name` - Optional, custom name for the client in logs, if not set `steamid` will be used
+    - `steamid` - The client steamid
+    - `username` - The client username
+    - `password` - The client password
+    - `shared_secret` - Optional, used if 2FA is enabled on the account, ommit if your account doesn't use it (at this moment email SteamGuard is not supported)
+- `stats` - Optional, default `false`, if set, the bot will join [group chat](http://steamcommunity.com/groups/nscf) as a guest - used for statistics
 
 ## Bot commands
 
@@ -73,12 +86,12 @@ Available commands: !help, !info, !stats, !status, !botidle <appid>, !botstop, !
 
 - `!help` - Displays available commands
 - `!info` - Displays script info
-- `!status` - Displays total amount of cards left to idle by bot (alias: !cards)
-- `!redeem <code>` - Redeem the code on bot's account (alias: !feed <code>)
-- `!botidle <appid>` - Requests the bot to idle prompt game, there's no checking for cards left (alias: !idle <appid>)
+- `!status` - Displays total amount of cards left to idle by bot (alias: `!stats`, `!cards`, `!drop`, `!drops`)
+- `!redeem <code>` - Redeem the code on bot's account (alias: `!feed <code>`)
+- `!botidle <appid>` - Requests the bot to idle prompt game, there's no checking for cards left (alias: `!idle <appid>`)
 - `!farmidle <appid>` - Orders all bots to idle prompt game, only bots which have cards left will respond
 - `!botstop` - Stops the bot from idling
-- `!botstart` - Run the bot if stopped (alias: !botrefresh, !refresh)
+- `!botstart` - Run the bot if stopped (alias: `!botrefresh`, `!refresh`)
 - `!farmrefresh` - Refresh badges list for all bots
 - `!ping` - Responds with 'Pong!'
 
@@ -89,17 +102,48 @@ Available commands: !help, !info, !stats, !status, !botidle <appid>, !botstop, !
 
 ## Work in progress
 
+The script is still in testing state, there's no guarantee it won't crash because of unknown error, display weired message or cook you a meal - use on your own risk!
+
 There's a couple of TODOs in the code, you may check them for details.
 
-- Disable bot if it's trade blocked - there's no point in farmin cards then
+- Disable bot if it's trade blocked - there's no point in farming cards
 - Check for game purchase data to prevent from disabling refund option
-- Check if the bot already owns the game, instead of testing the key on all of them
-- Support for Steam Mobile Authenticator to accept trades automatically
+- Check if the bot already owns the game, instead of testing the key on all of them (the function is locked for now)
+- Add support for Steam Mobile Authenticator to accept trades automatically
+- Add support for email Steam Guard
+
+Feel free to inspect the code, bring or implement new ideas or just provide feedback!
+
+## Known bugs
+
+- The client may logout off steamcommunity, so it cannot check for the badges.
 
 ## Support
 
-For everything script related please use [issues](https://github.com/Aareksio/node-steam-card-farm/issues) or [steam group](http://steamcommunity.com/groups/nscf).
+Please use [issues](https://github.com/Aareksio/node-steam-card-farm/issues), [steam group](http://steamcommunity.com/groups/nscf) or just [drop me a line](http://steamcommunity.com/id/DoctorMole/).
 
 ## License
 
-MIT
+```
+The MIT License (MIT)
+
+Copyright (c) 2015 Arkadiusz Sygulski <arkadiusz@sygulski.pl>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```

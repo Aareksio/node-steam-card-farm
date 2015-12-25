@@ -1,6 +1,6 @@
 module.exports = {
     /* Domain, used for generating trade keys if needed */
-    domain: 'my-domain.me',
+    domain: 'my.domain',
 
     /* Bot admin(s) */
     botAdmins: [
@@ -9,28 +9,23 @@ module.exports = {
 
     /* Log levels */
     logger: {
-        console: 'info',
+        console: 'debug',
         file: 'error'
     },
 
     /* Bots */
     bots: [
         {
-            enabled: true,
-            trades: true,
-            idle: false,
-            name: 'Main',
-            steamid: '76561198042302314',
-            username: 'mainUsername',
-            password: 'mainPassword',
-            shared_secret: 'sharedSecret'
-        },
-        {
             enabled: false,
-            name: 'Bot #1',
-            steamid: '76561198042XXXXXX',
-            username: 'bot#1Username',
-            password: 'bot#1Password'
+            trades: true,
+            idle: true,
+            offline: true,
+            name: 'Bot',
+            steamid: '76561198xxxxxxxxx',
+            username: 'xxxxxxxx',
+            password: 'xxxxxxxx',
+            shared_secret: 'xxxxxxxxxxxxxxxxxxxxxxxxxxx=',
+            identity_secret:'xxxxxxxxxxxxxxxxxxxxxxxxxxx='
         }
     ],
 
