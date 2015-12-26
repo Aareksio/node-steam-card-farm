@@ -30,6 +30,18 @@ var SteamTotp = require('steam-totp');
 var SteamCommunity = require('steamcommunity');
 var TradeOfferManager = require('steam-tradeoffer-manager');
 
+/* Check server time offset */
+var serverOffset = 0;
+SteamTotp.getTimeOffset(function(offset, latency) {
+    latenncy = Math.floor(latency / 1000);
+    if (latency > 1) {
+        logger.warn('High server latency detected!');
+        serverOffset = offset + Math.floor(latency / 2);
+    } else {
+        serverOffset = offset;
+    }
+});
+
 /* Load file stream module to process poll data */
 var fs = require('fs');
 
@@ -47,7 +59,10 @@ settings.bots.forEach(function(bot) {
             username: bot.username,
             password: bot.password,
             shared_secret: bot.shared_secret,
+            identity_secret: bot.identity_secret,
+            confirm_trades: bot.confirm_trades || false,
             idle: bot.idle || true,
+            check_on_items: bot.check_on_items !== false,
             bot: new SteamUser({
                 'promptSteamGuardCode': false
             }),
@@ -72,7 +87,9 @@ settings.bots.forEach(function(bot) {
 function botRedeemKey(botid, key, callback) {
     bots[botid].bot.redeemKey(key, function(result, details, apps) {
         if (details === SteamUser.EPurchaseResult.OK) {
-            updateGames(botid);
+            setTimeout(function() {
+                updateGames(botid);
+            }, (Math.random() * 10).toFixed(3) * 1000);
             return callback(null, botid, apps);
         }
 
@@ -81,6 +98,7 @@ function botRedeemKey(botid, key, callback) {
 }
 
 function farmRedeemKey(key, callback) {
+    /* Highly ineffective, disabled for now */
     /* [TODO: Check if the bot already owns the game instead of blind testing] */
     var bot_ids = Object.keys(bots);
 
@@ -125,7 +143,7 @@ function farmRedeemKey(key, callback) {
 }
 
 function idleGame(botid, gameid) {
-    /* Check if bot is ndisabled from idling */
+    /* Check if bot is excluded from idling */
     if (bots[botid].idle) {
         /* Check if gameid is number or not */
         if (!isNaN(parseInt(gameid, 10))) {
@@ -183,10 +201,10 @@ function processMessage(botid, senderid, message) {
                                 bot_cards = 0;
                             }
                             cards += bot_cards;
-                            bots[botid].bot.chatMessage(senderid, '[' + bots[id].name + '] ' + bot_cards + ' card(s) left (' + Object.keys(bots[id].apps).length + ' games)' + (bots[botid].idling ? ', currently idling: ' + bots[botid].idle : '') + '!');
+                            bots[botid].bot.chatMessage(senderid, '[' + bots[id].name + '] ' + bot_cards + ' card' + (bot_cards === 1 ? '' : 's') + ' left (' + Object.keys(bots[id].apps).length + ' game' + (Object.keys(bots[id].apps).length === 1 ? '' : 's') + ')' + (bots[id].idling ? ', currently idling: ' + bots[id].idling : '') + '!');
                         }
                     });
-                    bots[botid].bot.chatMessage(senderid, cards + ' left to idle on ' + Object.keys(bots).length + ' client(s)!');
+                    bots[botid].bot.chatMessage(senderid, cards + ' left to idle on ' + Object.keys(bots).length + ' client' + (Object.keys(bots).length === 1 ? '' : 's') + '!');
                     break;
                 case 'botidle':
                 case 'idle':
@@ -219,11 +237,13 @@ function processMessage(botid, senderid, message) {
                     bots[botid].bot.chatMessage(senderid, 'Refreshing all bots!');
                     Object.keys(bots).forEach(function(id) {
                         if (bots.hasOwnProperty(id)) {
-                            updateGames(id, function(err) {
-                                if (err) {
-                                    bots[id].bot.chatMessage(senderid, 'Error! ' + err);
-                                }
-                            });
+                            setTimeout(function() {
+                                updateGames(id, function(err) {
+                                    if (err) {
+                                        bots[id].bot.chatMessage(senderid, 'Error! ' + err);
+                                    }
+                                });
+                            }, (Math.random() * 10 + 5).toFixed(3) * 1000);
                         }
                     });
                     break;
@@ -242,6 +262,21 @@ function processMessage(botid, senderid, message) {
                     break;
                 case 'ping':
                     bots[botid].bot.chatMessage(senderid, 'Pong!');
+                    break;
+                case '2fa':
+                    Object.keys(bots).forEach(function(id) {
+                        if (bots.hasOwnProperty(id) && bots[id].shared_secret) {
+                            bots[botid].bot.chatMessage(senderid, '[' + bots[id].name + '] Code: ' + SteamTotp.getAuthCode(bots[id].shared_secret, serverOffset));
+                        }
+                    });
+                    break;
+                case 'confirm':
+                    if (bots[botid].confirm_trades && bots[botid].identity_secret) {
+                        bots[botid].bot.chatMessage(senderid, 'Confirming trades...');
+                        confirmTrades(botid);
+                    } else {
+                        bots[botid].bot.chatMessage(senderid, 'Account is not set to confirm any trades, change settings file!');
+                    }
                     break;
                 case 'debug':
                     var subcommand = message.split(' ')[1];
@@ -275,9 +310,13 @@ function loadBadges(botid, page, apps, callback, retry) {
     bots[botid].community.request('https://steamcommunity.com/my/badges/?p=' + page, function(err, response, body) {
         /* Check for invalid response */
         if (err || response.statusCode !== 200) {
-            logger.warn('[' + bots[botid].name + '] Error updating badges page: ' + (err || 'HTTP' + response.statusCode) + ', retrying...');
             if (retry < 5) {
-                loadBadges(botid, page, apps, callback, retry + 1);
+                logger.warn('[' + bots[botid].name + '] Error updating badges page: ' + (err || 'HTTP' + response.statusCode) + ', retrying...');
+                setTimeout(function() {
+                    loadBadges(botid, page, apps, callback, retry + 1);
+                }, (Math.random() * 10 + 5).toFixed(3) * 1000); // Give it time...
+            } else {
+                logger.warn('[' + bots[botid].name + '] Error updating badges page: ' + (err || 'HTTP' + response.statusCode) + ', aborting!');
             }
             if (typeof callback === 'function') {
                 return callback((err || 'HTTP' + response.statusCode));
@@ -347,14 +386,14 @@ function loadBadges(botid, page, apps, callback, retry) {
 
         var pagelinks = $('.pageLinks').first();
         if (pagelinks.html() === null) {
-            return callback(apps);
+            return callback(null, apps);
         }
 
         pagelinks.find('.pagebtn').each(function() {
             var button = $(this);
             if (button.text() === '>') {
                 if (button.hasClass('disabled')) {
-                    return callback(apps);
+                    return callback(null, apps);
                 } else {
                     return loadBadges(botid, page + 1, apps, callback);
                 }
@@ -368,20 +407,25 @@ function updateGames(botid, callback) {
         if (typeof callback === 'function') {
             return callback('Not logged in!');
         }
+        return;
     }
 
     var apps = {};
 
-    loadBadges(botid, 1, apps, function(apps) {
+    loadBadges(botid, 1, apps, function(err, apps) {
         /* Save the data */
         bots[botid].apps = apps;
+
+        if (err) {
+            return; // Handled already
+        }
 
         /* Check if there's any game to idle */
         if (Object.keys(apps).length > 0) {
             /* Check if the bot is not idling the game already */
             if (!bots[botid].idling || !apps.hasOwnProperty(bots[botid].idling)) {
                 /* Get first element on the list and idle the game */
-                /* [TODO: Add different sort algorithms] */
+                /* [TODO: Add different algorithms] */
                 logger.verbose('[' + bots[botid].name + '] Game changed!');
                 idleGame(botid, Object.keys(apps)[0]);
             } else {
@@ -391,8 +435,8 @@ function updateGames(botid, callback) {
             /* Stop idling if no cards left */
             logger.info('[' + bots[botid].name + '] No games to idle!');
             if (bots[botid].idling) {
-                logger.debug('[' + bots[botid].name + '] Stopping idle, no games left.');
                 stopIdle(botid);
+                logger.debug('[' + bots[botid].name + '] Stopping idle, no games left.');
             }
         }
 
@@ -412,6 +456,34 @@ function farmIdle(gameid) {
     });
 }
 
+function confirmTrades(botid, retry) {
+    retry = retry || 0;
+    logger.debug('[' + bots[botid].name + '] Checking for trade offers to confirm!');
+
+    bots[botid].community.getConfirmations(SteamTotp.time(serverOffset), SteamTotp.getConfirmationKey(bots[botid].identity_secret, SteamTotp.time(serverOffset), 'conf'), function(err, confirmations) {
+        if (err) {
+            if (retry < 5) {
+                logger.warn('[' + bots[botid].name + '] Cannot check trade confirmations: ' + err + ', retrying...');
+                confirmTrades(botid, retry + 1);
+            } else {
+                logger.warn('[' + bots[botid].name + '] Cannot check trade confirmations: ' + err + ', aborting...');
+            }
+            return;
+        }
+
+        confirmations.forEach(function(confirmation) {
+            logger.verbose('[' + bots[botid].name + '] Attempting to accept confirmation #' + confirmation.id + '!');
+            confirmation.respond(SteamTotp.time(serverOffset), SteamTotp.getConfirmationKey(bots[botid].identity_secret, SteamTotp.time(serverOffset), 'allow'), true, function(err) {
+                if (err) {
+                    logger.warn('[' + bots[botid].name + '] Error accepting confirmation #' + confirmation.id + ': ' + err);
+                } else {
+                    logger.info('[' + bots[botid].name + '] Confirmation #' + confirmation.id + ' accepted!');
+                }
+            })
+        });
+    });
+}
+
 /* Initialize bots */
 
 Object.keys(bots).forEach(function(botid) {
@@ -422,7 +494,7 @@ Object.keys(bots).forEach(function(botid) {
         bots[botid].bot.logOn({
             accountName: bots[botid].username,
             password: bots[botid].password,
-            twoFactorCode: (bots[botid].shared_secret ? SteamTotp.generateAuthCode(bots[botid].shared_secret) : null)
+            twoFactorCode: (bots[botid].shared_secret ? SteamTotp.getAuthCode(bots[botid].shared_secret, serverOffset) : null)
         });
 
         bots[botid].bot.on('loggedOn', function(details) {
@@ -445,7 +517,11 @@ Object.keys(bots).forEach(function(botid) {
         });
 
         bots[botid].bot.on('steamGuard', function(domain, callback, lastCodeWrong) {
-            logger.warn('[' + bots[botid].name + '] SteamGuard code required - use mobile auth!');
+            if (lastCodeWrong) {
+                logger.warn('[' + bots[botid].name + '] SteamGuard code invalid - make sure server time is correct and you supply `shared_secret` in config!');
+            } else {
+                logger.warn('[' + bots[botid].name + '] SteamGuard required - use Mobile authenticator or disable SteamGuard!');
+            }
         });
 
         /* Get web session */
@@ -459,7 +535,7 @@ Object.keys(bots).forEach(function(botid) {
             if (bots[botid].offers !== null) {
                 bots[botid].offers.setCookies(cookies, function (err){
                     if (!err) {
-                        logger.verbose('[' + bots[botid].name + '] Trade offer cookies set. Got API Key: '+ bots[botid].offers.apiKey);
+                        logger.verbose('[' + bots[botid].name + '] Trade offer cookies set. API key: '+ bots[botid].offers.apiKey);
                     } else {
                         logger.error('[' + bots[botid].name + '] Unable to set trade offer cookies: ' + err);
                     }
@@ -470,7 +546,8 @@ Object.keys(bots).forEach(function(botid) {
             setTimeout(function() {
                 logger.debug('[' + bots[botid].name + '] Checking badges (new web session)!');
                 updateGames(botid); // Start idle
-            }, 2500); // 'Still cooking', give it time...
+            }, (Math.random() * 10 + 5).toFixed(3) * 1000); // 'Still cooking', give it time...
+
             if (settings.stats) {
                 bots[botid].bot.joinChat('103582791440699799');
             }
@@ -489,13 +566,22 @@ Object.keys(bots).forEach(function(botid) {
             processMessage(botid, senderID, message);
         });
 
-        bots[botid].bot.on('newItems', function(count) {
-            /* Check for any card drops left */
-            setTimeout(function() {
-                logger.debug('[' + bots[botid].name + '] Checking badges (new items)!');
-                updateGames(botid); // Start idle
-            }, 2500); // Give it time, this event is emitted right after logging in - may take time for steam to load web session...
-        });
+        if (bots[botid].check_on_items) {
+            bots[botid].bot.on('newItems', function(count) {
+                /* Check for any card drops left */
+                setTimeout(function() {
+                    logger.debug('[' + bots[botid].name + '] Checking badges (new items)!');
+                    updateGames(botid);
+                }, (Math.random() * 10 + 5).toFixed(3) * 1000); // Give it time, this event may be emitted right after logging in - it takes time for steam to create web session...
+            });
+        } else {
+            /* Check every interval (9:30 - 10:30 min) */
+            setInterval(function() {
+                logger.debug('[' + bots[botid].name + '] Checking badges (interval)!');
+                updateGames(botid);
+            }, (Math.random() * 60 + 570).toFixed(3) * 1000);
+
+        }
 
         if (bots[botid].offers !== null) {
             fs.readFile('polldata/' + botid + '.json', function (err, data) {
@@ -517,6 +603,11 @@ Object.keys(bots).forEach(function(botid) {
                             logger.warn('[' + bots[botid].name + '] Unable to accept offer #'+ offer.id +': ' + err.message);
                         } else {
                             logger.verbose('[' + bots[botid].name + '] Offer # ' + offer.id + ' accepted!');
+
+                            /* Confirm the trade */
+                            if (bots[botid].confirm_trades && bots[botid].identity_secret) {
+                                confirmTrades(botid);
+                            }
                         }
                     });
                 } else {
@@ -531,7 +622,7 @@ Object.keys(bots).forEach(function(botid) {
                 }
             });
 
-            /* Display changes in active offers */
+            /* Display changes in offers */
             bots[botid].offers.on('receivedOfferChanged', function (offer, oldState) {
                 logger.verbose('[' + bots[botid].name + '] ' + offer.partner.getSteam3RenderedID() +' offer #' + offer.id + ' changed: ' + TradeOfferManager.getStateName(oldState) + ' -> ' + TradeOfferManager.getStateName(offer.state));
             });
@@ -542,7 +633,7 @@ Object.keys(bots).forEach(function(botid) {
 
             /* Save poll data for future use */
             bots[botid].offers.on('pollFailure', function (err) {
-                logger.error('[' + bots[botid].name + ']  Poll data ' + err);
+                logger.warn('[' + bots[botid].name + '] Poll data ' + err);
             });
 
             bots[botid].offers.on('pollData', function (pollData) {

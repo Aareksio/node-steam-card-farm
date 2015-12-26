@@ -24,7 +24,7 @@
   "dependencies": {
     "cheerio": "^0.19.0",
     "fs": "0.0.2",
-    "steam-totp": "^1.1.0",
+    "steam-totp": "^1.2.0",
     "steam-tradeoffer-manager": "^1.15.1",
     "steam-user": "^3.2.0",
     "steamcommunity": "^3.14.1593",

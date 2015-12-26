@@ -18,8 +18,10 @@ module.exports = {
         {
             enabled: false,
             trades: true,
+            confirm_trades: false,
             idle: true,
             offline: true,
+            check_on_items: true,
             name: 'Bot',
             steamid: '76561198xxxxxxxxx',
             username: 'xxxxxxxx',
