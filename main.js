@@ -1,6 +1,7 @@
 /* Get settings from the file */
+var settings = {};
 try {
-    var settings = require('./config/settings.js');
+    settings = require('./config/settings.js');
 } catch (err) {
     console.error('No settings file! (./config/settings.js)');
     console.error('Read more: https://github.com/Aareksio/node-steam-card-farm#configuration');
@@ -191,7 +192,7 @@ function processMessage(botid, senderid, message) {
                     Object.keys(bots).forEach(function(id) {
                         if (bots.hasOwnProperty(id)) {
                             var bot_cards = Object.keys(bots[id].apps).map(function(index) {
-                                return parseInt(bots[id].apps[index].drops);
+                                return parseInt(bots[id].apps[index].drops, 10);
                             });
                             if (bot_cards.length > 0) {
                                 bot_cards = bot_cards.reduce(function(a, b) {
@@ -275,7 +276,7 @@ function processMessage(botid, senderid, message) {
                         bots[botid].bot.chatMessage(senderid, 'Confirming trades...');
                         confirmTrades(botid);
                     } else {
-                        bots[botid].bot.chatMessage(senderid, 'Account is not set to confirm any trades, change settings file!');
+                        bots[botid].bot.chatMessage(senderid, 'Account is not allowed to confirm any trades, change settings file!');
                     }
                     break;
                 case 'debug':
@@ -475,7 +476,12 @@ function confirmTrades(botid, retry) {
             logger.verbose('[' + bots[botid].name + '] Attempting to accept confirmation #' + confirmation.id + '!');
             confirmation.respond(SteamTotp.time(serverOffset), SteamTotp.getConfirmationKey(bots[botid].identity_secret, SteamTotp.time(serverOffset), 'allow'), true, function(err) {
                 if (err) {
-                    logger.warn('[' + bots[botid].name + '] Error accepting confirmation #' + confirmation.id + ': ' + err);
+                    if (retry < 5) {
+                        logger.warn('[' + bots[botid].name + '] Error accepting confirmation #' + confirmation.id + ': ' + err + ', retrying...');
+                        confirmTrades(botid, retry + 1);
+                    } else {
+                        logger.warn('[' + bots[botid].name + '] Error accepting confirmation #' + confirmation.id + ': ' + err + ', aborting...');
+                    }
                 } else {
                     logger.info('[' + bots[botid].name + '] Confirmation #' + confirmation.id + ' accepted!');
                 }
@@ -602,7 +608,7 @@ Object.keys(bots).forEach(function(botid) {
                         if (err) {
                             logger.warn('[' + bots[botid].name + '] Unable to accept offer #'+ offer.id +': ' + err.message);
                         } else {
-                            logger.verbose('[' + bots[botid].name + '] Offer # ' + offer.id + ' accepted!');
+                            logger.verbose('[' + bots[botid].name + '] Offer #' + offer.id + ' accepted!');
 
                             /* Confirm the trade */
                             if (bots[botid].confirm_trades && bots[botid].identity_secret) {

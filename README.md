@@ -26,7 +26,7 @@ You should see some information on console screen (depending on log level you ch
 ## Accounts
 
 Account must be protected by Mobile Authenticator or not protected by SteamGuard at all in order to work with the script. You must supply `shared_secret` from your device if you use Mobile Authenticator ([see how to](http://forums.backpack.tf/index.php?/topic/45995-guide-how-to-get-your-shared-secret-from-ios-device-steam-mobile/)).
-You may supply `identity_secret` and enable `confirm_trades` to automate trade system - note that only trade offers from bot admin will be accepted and confirmed, all others will be canceled.
+You may supply `identity_secret` and enable `confirm_trades` to automate trade confirmation system - note that only trade offers from bot admin will be accepted and confirmed, all others will be canceled.
 
 Check [support](#Support) section if you need more help.
 
