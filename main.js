@@ -472,21 +472,27 @@ function confirmTrades(botid, retry) {
             return;
         }
 
+        var failed = false;
+
         confirmations.forEach(function(confirmation) {
             logger.verbose('[' + bots[botid].name + '] Attempting to accept confirmation #' + confirmation.id + '!');
             confirmation.respond(SteamTotp.time(serverOffset), SteamTotp.getConfirmationKey(bots[botid].identity_secret, SteamTotp.time(serverOffset), 'allow'), true, function(err) {
                 if (err) {
-                    if (retry < 5) {
-                        logger.warn('[' + bots[botid].name + '] Error accepting confirmation #' + confirmation.id + ': ' + err + ', retrying...');
-                        confirmTrades(botid, retry + 1);
-                    } else {
-                        logger.warn('[' + bots[botid].name + '] Error accepting confirmation #' + confirmation.id + ': ' + err + ', aborting...');
-                    }
+                    logger.warn('[' + bots[botid].name + '] Error accepting confirmation #' + confirmation.id + ': ' + err + '...');
                 } else {
                     logger.info('[' + bots[botid].name + '] Confirmation #' + confirmation.id + ' accepted!');
                 }
             })
         });
+
+        if (failed) {
+            if (retry < 5) {
+                logger.warn('[' + bots[botid].name + '] Error accepting confirmations, retrying...');
+                confirmTrades(botid, retry + 1);
+            } else {
+                logger.warn('[' + bots[botid].name + '] Error accepting confirmations 5 times in a row, aborting...');
+            }
+        }
     });
 }
 
