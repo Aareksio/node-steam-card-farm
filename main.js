@@ -308,7 +308,7 @@ function loadBadges(botid, page, apps, callback, retry) {
     logger.debug('[' + bots[botid].name + '] Checking badges page ' + page + '...');
 
     /* Use steamcommunity module to access badges page */
-    bots[botid].community.request('https://steamcommunity.com/my/badges/?p=' + page, function(err, response, body) {
+    bots[botid].community.request('https://steamcommunity.com/my/badges/?l=english&p=' + page, function(err, response, body) {
         /* Check for invalid response */
         if (err || response.statusCode !== 200) {
             if (retry < 5) {
